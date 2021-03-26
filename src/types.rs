@@ -3,6 +3,7 @@ use rasn::types::{Class, Implicit, Utf8String};
 pub use rasn::types::{ObjectIdentifier, OctetString};
 use rasn::{AsnType, Decode, Decoder, Encode, Encoder, Tag};
 use std::fmt;
+use std::time;
 use std::net::Ipv4Addr;
 
 /* Definitions from RFC 2578 */
@@ -48,8 +49,31 @@ impl Encode for TimeTicks {
 
 impl Decode for TimeTicks {
     fn decode_with_tag<D: Decoder>(decoder: &mut D, tag: Tag) -> Result<Self, D::Error> {
+
         let ticks = u32::decode_with_tag(decoder, tag)?;
         Ok(Self(ticks))
+    }
+}
+
+impl From<time::Duration> for TimeTicks {
+    fn from(d: time::Duration) -> TimeTicks {
+        TimeTicks{ 0: (d.as_millis() / 10) as u32 }
+    }
+}
+
+impl fmt::Display for TimeTicks {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ticks = self.0;
+        let hundredths = ticks % 100;
+        ticks /= 100;
+        let secs = ticks % 60;
+        ticks /= 60;
+        let minutes = ticks % 60;
+        ticks /= 60;
+        let hours = ticks % 24;
+        let days = ticks / 24;
+
+        write!(f, "({}) {}d {}:{:02}:{:02}.{:02}", self.0, days, hours, minutes, secs, hundredths)
     }
 }
 
@@ -149,19 +173,19 @@ impl Decode for Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Null => write!(f, "(null)"),
-            Value::Oid(v) => write!(f, "OID: {}", ObjectIdentifierDisplayWrapper(v)),
-            Value::Integer(v) => write!(f, "INTEGER: {}", v),
-            Value::IpAddr(v) => write!(f, "IPADDR: {}", v),
-            Value::Gauge32(v) => write!(f, "GAUGE: {}", v),
-            Value::Counter32(v) => write!(f, "COUNTER: {}", v),
-            Value::Counter64(v) => write!(f, "COUNTER: {}", v),
-            Value::Timeticks(v) => write!(f, "TIMETICKS: {}", v.0),
-            Value::OctetStr(_) => write!(f, "OCTECT STR: "),
-            Value::Opaque(_) => write!(f, "Opaque: "),
-            Value::NoSuchObject => write!(f, "NoSuchObject"),
-            Value::NoSuchInstance => write!(f, "NoSuchInstance"),
-            Value::EndOfMIBView => write!(f, "EndOfMIBView"),
+            Value::Null => write!(f, "<null>"),
+            Value::Oid(v) => write!(f, "{}", ObjectIdentifierDisplayWrapper(v)),
+            Value::Integer(v) => write!(f, "{}", v),
+            Value::IpAddr(v) => write!(f, "{}", v),
+            Value::Gauge32(v) => write!(f, "{}", v),
+            Value::Counter32(v) => write!(f, "{}", v),
+            Value::Counter64(v) => write!(f, "{}", v),
+            Value::Timeticks(v) => write!(f, "{}", v),
+            Value::OctetStr(v) => write!(f, "{}", std::str::from_utf8(v).unwrap_or("<Invalid UTF8>")),
+            Value::Opaque(v) => write!(f, "<Opaque: {} bytes>", v.len()),
+            Value::NoSuchObject => write!(f, "<NoSuchObject"),
+            Value::NoSuchInstance => write!(f, "<NoSuchInstance>"),
+            Value::EndOfMIBView => write!(f, "<EndOfMIBView>"),
         }
     }
 }
