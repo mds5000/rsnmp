@@ -1,23 +1,16 @@
-use snmp::{oid, Client, Message, Version};
+use snmp::{oid, Client, ObjectIdentifier, Version};
 use std::net::UdpSocket;
 
-use rasn::ber::{decode, encode};
-use rasn::types::ObjectIdentifier;
-
 fn main() {
-    let socket = UdpSocket::bind("0.0.0.0:0").expect("Could not open socket");
+    let mut socket = UdpSocket::bind("0.0.0.0:0").expect("Could not open socket");
     socket.connect("10.0.0.64:161").expect("Failed to connect");
 
-    let mut client = Client::new(Version::V2C, "public");
-    let root = vec![oid! {1,3,6}];
-    let bytes = encode(&client.get(&root)).unwrap();
+    let mut c = Client::new(Version::V2C, &mut socket);
+    let mut oids = vec![oid! {1,3,6}];
 
-    socket.send(&bytes).expect("send");
-    let mut buf = [0; 1024];
-    let size = socket.recv(&mut buf).unwrap();
+    while let Ok(res) = c.get_next(&oids) {
+        println!("{}", res[0]);
 
-    let msg = decode::<Message>(&buf[..size]).unwrap();
-
-    dbg! {&buf[..size]};
-    dbg! {msg};
+        oids = res.into_iter().map(|v| v.name).collect();
+    }
 }
