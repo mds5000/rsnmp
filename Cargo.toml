@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 bytes = "1"
 rand = "0.8.2"
-rasn = {git="https://github.com/mds5000/rasn", branch="fix-implicit-seq"}
+rasn = "0.2.2"
 
 [[bin]]
 name = "sget"
